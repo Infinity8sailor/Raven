@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raven</title>
+    <link rel="stylesheet" href="themes.css?v=15">
+    <link rel="stylesheet" href="styles.css?v=15">
+    <script>
+        try {
+            const f = localStorage.getItem('raven_font') || 'classic';
+            document.documentElement.setAttribute('data-font', f);
+        } catch (_) {}
+    </script>
+    <script defer src="app.js?v=15"></script>
+    <script defer src="vendor/alpine.min.js"></script>
+</head>
+<body x-data="ravenApp()" x-init="init()" :data-theme="activeTheme" :data-font="currentFont">
+    
+    <header class="sticky-header">
+        <div class="header-left">
+            <span class="logo">🐦‍⬛ Raven</span>
+            <span class="clock" x-text="clock"></span>
+        </div>
+        
+        <div class="header-center">
+            <input type="text" x-model="searchQuery" placeholder="Search..." class="search-bar" aria-label="Search lists and items" title="Search lists and items">
+        </div>
+
+        <div class="header-right">
+            <button type="button" class="nav-btn" @click="createList('standard')" aria-label="Create new list" title="Create new list">+ List</button>
+            <label class="archived-toggle nav-btn" style="cursor: pointer;" title="Show or hide archived lists">
+                <input type="checkbox" x-model="showArchived" style="margin-right: 4px;" aria-label="Show archived lists"> Archived
+            </label>
+            <button type="button" class="nav-btn" @click="showClipboardPanel = !showClipboardPanel" :class="{'active': showClipboardPanel}" aria-label="Global clipboard" title="Clipboard">⎘</button>
+            <button type="button" class="nav-btn" @click="showGlobalSettings = !showGlobalSettings" aria-label="Global settings" title="Settings">⛭</button>
+            <select x-model="settings.theme" @change="changeTheme($event.target.value)" class="theme-picker" aria-label="Select color theme" title="Select color theme">
+                <option value="random">Random</option>
+                <option value="obsidian">Nero</option>
+                <option value="chlorophyll">Chlorophyll</option>
+                <option value="infrared">Infrared</option>
+                <option value="ultraviolet">Ultraviolet</option>
+                <option value="sepia">Sepia</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Global Settings Panel -->
+    <div x-show="showGlobalSettings" x-cloak class="global-settings-panel">
+        <div class="settings-row">
+            <label>Backup Mode:</label>
+            <select x-model="settings.backup_mode" @change="updateSettings({ backup_mode: $event.target.value })">
+                <option value="on_write">On Write</option>
+                <option value="disabled">Disabled</option>
+            </select>
+            <button type="button" class="small-btn" @click="api('POST', '/backup').then(() => { showCopyToast = true; setTimeout(() => showCopyToast = false, 2000); })">Force Backup Now</button>
+        </div>
+        <div class="settings-row" style="margin-top: 10px;">
+            <label>Text Font:</label>
+            <select x-model="currentFont" @change="changeFont($event.target.value)">
+                <option value="classic">Classic Serif (Georgia)</option>
+                <option value="cosmic">Cosmic Sans (Comic Sans)</option>
+            </select>
+        </div>
+        <div class="settings-row" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; font-size: 0.8rem; color: var(--text-muted);">
+            <span>System Status: OK</span> • <span x-text="'Schema v' + settings.schema_version"></span>
+        </div>
+    </div>
+
+    <!-- Global Clipboard Overlay Modal -->
+    <div x-show="showClipboardPanel" x-cloak class="modal-overlay" @click="showClipboardPanel = false">
+        <div class="global-clipboard-panel" @click.stop>
+            <div class="clipboard-panel-header">
+                <h3>Clipboard</h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <template x-if="!unifiedClipboard">
+                        <button type="button" class="small-btn" @click="createClipboard()">Initialize Clipboard</button>
+                    </template>
+                    <button type="button" class="nav-btn" @click="showClipboardPanel = false" style="padding: 2px 8px; font-size: 0.85rem;" aria-label="Close clipboard" title="Close clipboard">✕</button>
+                </div>
+            </div>
+            <div class="clipboard-groups" x-show="unifiedClipboard">
+                <template x-if="unifiedClipboard">
+                    <div class="cb-group" style="width: 100%;">
+                        <div class="cb-group-header">
+                            <span x-text="unifiedClipboard.title" style="opacity: 0.8; font-size: 0.9rem;"></span>
+                            <div>
+                                <button type="button" @click="unifiedClipboard.features.sensitive = !unifiedClipboard.features.sensitive; toggleFeature(unifiedClipboard.id, 'sensitive', unifiedClipboard.features.sensitive)" 
+                                        :aria-label="unifiedClipboard.features?.sensitive ? 'Sensitive mode active (click to disable)' : 'Sensitive mode inactive (click to enable)'" 
+                                        :title="unifiedClipboard.features?.sensitive ? 'Sensitive mode active (click to disable)' : 'Sensitive mode inactive (click to enable)'" 
+                                        class="small-btn" 
+                                        x-text="unifiedClipboard.features?.sensitive ? '⚿' : '◌'"></button>
+                            </div>
+                        </div>
+                        <div class="items" :id="'cb_items_'+unifiedClipboard.id">
+                            <template x-for="item in unifiedClipboard.items" :key="item.id">
+                                <div class="item-row cb-row">
+                                    <span class="cb-key" :title="item.key" x-text="item.key"></span>
+                                    <span class="cb-val" :title="unifiedClipboard.features?.sensitive && !item._showSensitive ? '' : item.value"
+                                          x-text="unifiedClipboard.features?.sensitive && !item._showSensitive ? '••••••••' : item.value"></span>
+                                    <div class="item-actions">
+                                        <template x-if="unifiedClipboard.features?.sensitive">
+                                            <button type="button" @click="item._showSensitive = !item._showSensitive" 
+                                                    :aria-label="item._showSensitive ? 'Hide sensitive value' : 'Show sensitive value'"
+                                                    :title="item._showSensitive ? 'Hide sensitive value' : 'Show sensitive value'"
+                                                    x-text="item._showSensitive ? 'ø' : '⚆'"></button>
+                                        </template>
+                                        <button type="button" @click="copyToClipboard(item.value)" 
+                                                aria-label="Copy value to clipboard" 
+                                                title="Copy value">⎘</button>
+                                        <button type="button" @click="confirmDelete(item.id, 'item', unifiedClipboard.id)" 
+                                                :class="{ 'btn-danger': deleteConfirmId === item.id }"
+                                                :aria-label="deleteConfirmId === item.id ? 'Confirm delete item' : 'Delete item'"
+                                                :title="deleteConfirmId === item.id ? 'Click to confirm delete' : 'Delete item'"
+                                                x-text="deleteConfirmId === item.id ? 'Sure?' : '✕'"></button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="quick-add flex-add quick-add-bottom">
+                            <input type="text" x-ref="'cbKey_'+unifiedClipboard.id" placeholder="Key" :id="'cbKey_'+unifiedClipboard.id" aria-label="Clipboard entry key">
+                            <input type="text" placeholder="Value" :id="'cbVal_'+unifiedClipboard.id" aria-label="Clipboard entry value"
+                                   @keydown.enter="
+                                       const keyEl = document.getElementById('cbKey_'+unifiedClipboard.id);
+                                       const valEl = $event.target;
+                                       addItem(unifiedClipboard.id, { key: keyEl.value, value: valEl.value });
+                                       keyEl.value = ''; valEl.value = '';
+                                   ">
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal for New List -->
+    <div x-show="newListModal" x-cloak class="modal-overlay" @click="newListModal = false">
+        <div class="modal-content" @click.stop>
+            <h3 style="margin-bottom: 16px;">New List</h3>
+            <input type="text" x-model="newListTitle" placeholder="List title..." @keydown.enter="submitNewList()" class="search-bar" id="newListInput" aria-label="New list title">
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="nav-btn" @click="newListModal = false" aria-label="Cancel list creation" title="Cancel">Cancel</button>
+                <button type="button" class="nav-btn" @click="submitNewList()" aria-label="Confirm create list" title="Create list">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="lists-grid">
+        <template x-for="list in filteredLists" :key="list.id">
+            <div class="list-card" :class="{ 'archived': list.archived }">
+                
+                <div class="list-header">
+                    <div class="list-title-area">
+                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                            <h2 class="list-title" :title="list.title" x-text="list.title"></h2>
+                            <template x-if="list.pinned">
+                                <span class="pin-badge" title="Pinned list" aria-label="Pinned list" style="display: inline-flex; align-items: center; color: var(--accent); flex-shrink: 0;">
+                                    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                        <path d="M4.146.146A.5.5 0 0 1 4.5 0h7a.5.5 0 0 1 .5.5c0 .68-.342 1.174-.646 1.479-.283.284-.53.5-.636.788-.06.162-.084.38-.073.682.02.528.211 1.281.867 2.156.445.593.719 1.292.776 2.002.06.735-.118 1.503-.667 2.052L10.5 11l-2 5-1-4-4-1 1.343-1.121c.549-.55.727-1.317.767-2.052.057-.71-.217-1.409-.662-2.002-.656-.875-.847-1.628-.867-2.156-.011-.302.013-.52.073-.682.106-.288.353-.504.636-.788C3.804 1.674 4.146 1.18 4.146.5a.5.5 0 0 1 .146-.354z"/>
+                                    </svg>
+                                </span>
+                            </template>
+                            <template x-if="list.type === 'clipboard'">
+                                <span class="time-badge" style="font-size: 0.75rem; flex-shrink: 0;">⎘ Clipboard</span>
+                            </template>
+                        </div>
+                        <!-- Sprint dates display -->
+                        <template x-if="list.features?.sprint_dates && (list.sprint_start || list.sprint_end)">
+                            <span class="sprint-dates" x-text="(list.sprint_start || '?') + ' → ' + (list.sprint_end || '?')"></span>
+                        </template>
+                    </div>
+                    <div class="list-actions" x-show="list.type === 'standard'">
+                        <button type="button" @click="list._menuOpen = !list._menuOpen" aria-label="List options menu" title="List options" class="menu-trigger-btn" :class="{'active': list._menuOpen}">
+                            <svg class="icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <circle cx="8" cy="3" r="1.75"/>
+                                <circle cx="8" cy="8" r="1.75"/>
+                                <circle cx="8" cy="13" r="1.75"/>
+                            </svg>
+                        </button>
+                        <div x-show="list._menuOpen" @click.outside="list._menuOpen = false" x-cloak class="list-dropdown-menu">
+                            <button type="button" class="dropdown-item" @click="list._showSettings = !list._showSettings; list._menuOpen = false" aria-label="Configure list" title="Configure list">
+                                <svg class="icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1-.872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
+                                <span>Configure</span>
+                            </button>
+                            <button type="button" class="dropdown-item" @click="pinList(list.id); list._menuOpen = false" :class="{'active': list.pinned}" :aria-label="list.pinned ? 'Unpin list' : 'Pin list'" :title="list.pinned ? 'Unpin list' : 'Pin list'">
+                                <svg class="icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.146.146A.5.5 0 0 1 4.5 0h7a.5.5 0 0 1 .5.5c0 .68-.342 1.174-.646 1.479-.283.284-.53.5-.636.788-.06.162-.084.38-.073.682.02.528.211 1.281.867 2.156.445.593.719 1.292.776 2.002.06.735-.118 1.503-.667 2.052L10.5 11l-2 5-1-4-4-1 1.343-1.121c.549-.55.727-1.317.767-2.052.057-.71-.217-1.409-.662-2.002-.656-.875-.847-1.628-.867-2.156-.011-.302.013-.52.073-.682.106-.288.353-.504.636-.788C3.804 1.674 4.146 1.18 4.146.5a.5.5 0 0 1 .146-.354z"/></svg>
+                                <span x-text="list.pinned ? 'Unpin' : 'Pin'"></span>
+                            </button>
+                            <button type="button" class="dropdown-item" @click="archiveList(list.id); list._menuOpen = false" :class="{'active': list.archived}" :aria-label="list.archived ? 'Unarchive list' : 'Archive list'" :title="list.archived ? 'Unarchive list' : 'Archive list'">
+                                <svg class="icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M0 2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 12.5V5a1 1 0 0 1-1-1V2zm2 3v7.5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5H2zm3 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5A.5.5 0 0 1 5 7z"/></svg>
+                                <span x-text="list.archived ? 'Unarchive' : 'Archive'"></span>
+                            </button>
+                            <button type="button" class="dropdown-item item-delete" @click="confirmDelete(list.id, 'list')"
+                                    :class="{ 'btn-danger': deleteConfirmId === list.id }"
+                                    :aria-label="deleteConfirmId === list.id ? 'Confirm delete list' : 'Delete list'"
+                                    :title="deleteConfirmId === list.id ? 'Click to confirm delete' : 'Delete list'">
+                                <svg class="icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                                <span x-text="deleteConfirmId === list.id ? 'Sure?' : 'Delete'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced List Configure Panel -->
+                <div x-show="list._showSettings" x-cloak class="list-settings-panel">
+                    <div class="config-header">
+                        <h4>Configure List</h4>
+                        <button type="button" class="nav-btn" @click="list._showSettings = false" style="padding: 2px 6px; font-size: 0.8rem;" aria-label="Close configure panel" title="Close">✕</button>
+                    </div>
+
+                    <!-- General Section: Rename Title -->
+                    <div class="config-section">
+                        <div class="config-section-title">General</div>
+                        <div class="config-row">
+                            <div class="config-label-area" style="width: 100%;">
+                                <span class="config-title">Title</span>
+                                <input type="text" x-model="list.title" @change="updateList(list.id, { title: list.title })" class="config-text-input" placeholder="List title...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Section: Sprint Dates -->
+                    <div class="config-section">
+                        <div class="config-section-title">Schedule</div>
+                        <div class="config-row">
+                            <div class="config-label-area">
+                                <span class="config-title">Sprint Dates</span>
+                                <span class="config-desc">Display start & end date range in list header</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" :checked="list.features?.sprint_dates" @change="toggleFeature(list.id, 'sprint_dates', $event.target.checked)" aria-label="Toggle sprint dates display" title="Toggle sprint dates">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="config-date-inputs" x-show="list.features?.sprint_dates">
+                            <div class="date-field">
+                                <label>Start</label>
+                                <input type="date" :value="list.sprint_start" @change="updateList(list.id, { sprint_start: $event.target.value })" aria-label="Sprint start date" title="Sprint start date">
+                            </div>
+                            <div class="date-field">
+                                <label>End</label>
+                                <input type="date" :value="list.sprint_end" @change="updateList(list.id, { sprint_end: $event.target.value })" aria-label="Sprint end date" title="Sprint end date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature Capabilities -->
+                    <div class="config-section">
+                        <div class="config-section-title">Features</div>
+                        <template x-if="list.type === 'standard'">
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div class="config-row">
+                                    <div class="config-label-area">
+                                        <span class="config-title">Checkboxes</span>
+                                        <span class="config-desc">Completion checkbox next to each task</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" :checked="list.features?.checkboxes" @change="toggleFeature(list.id, 'checkboxes', $event.target.checked)" aria-label="Toggle task checkboxes" title="Toggle completion checkboxes">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="config-row">
+                                    <div class="config-label-area">
+                                        <span class="config-title">Reorder</span>
+                                        <span class="config-desc">Manual ↑↓ sorting buttons</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" :checked="list.features?.reorder" @change="toggleFeature(list.id, 'reorder', $event.target.checked)" aria-label="Toggle manual reordering" title="Toggle item reordering buttons">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="config-row">
+                                    <div class="config-label-area">
+                                        <span class="config-title">Last Updated</span>
+                                        <span class="config-desc">Relative time badge (&lt;1d, 1w)</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" :checked="list.features?.last_updated" @change="toggleFeature(list.id, 'last_updated', $event.target.checked)" aria-label="Toggle relative last updated badge" title="Toggle last updated badge">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="config-row">
+                                    <div class="config-label-area">
+                                        <span class="config-title">Auto-Collapse</span>
+                                        <span class="config-desc">Auto-collapse completed tasks</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" :checked="list.features?.auto_collapse" @change="toggleFeature(list.id, 'auto_collapse', $event.target.checked)" aria-label="Toggle auto-collapse completed tasks" title="Toggle auto-collapse">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="list.type === 'clipboard'">
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div class="config-row">
+                                    <div class="config-label-area">
+                                        <span class="config-title">Sensitive Data</span>
+                                        <span class="config-desc">Mask secret values by default</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" :checked="list.features?.sensitive" @change="toggleFeature(list.id, 'sensitive', $event.target.checked)" aria-label="Toggle sensitive data masking" title="Toggle sensitive data masking">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="config-row">
+                                    <div class="config-label-area">
+                                        <span class="config-title">Reorder</span>
+                                        <span class="config-desc">Manual ↑↓ sorting buttons</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" :checked="list.features?.reorder" @change="toggleFeature(list.id, 'reorder', $event.target.checked)" aria-label="Toggle clipboard item reordering" title="Toggle clipboard reordering">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="config-row">
+                                    <div class="config-label-area">
+                                        <span class="config-title">Last Updated</span>
+                                        <span class="config-desc">Relative time badge</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" :checked="list.features?.last_updated" @change="toggleFeature(list.id, 'last_updated', $event.target.checked)" aria-label="Toggle clipboard last updated badge" title="Toggle last updated badge">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Actions Section -->
+                    <div class="config-section">
+                        <div class="config-section-title">Actions</div>
+                        <div class="config-actions-row">
+                            <button type="button" class="config-action-btn" @click="reorderList(list.id, 'up')" aria-label="Move list left" title="Move list left">← Move Left</button>
+                            <button type="button" class="config-action-btn" @click="reorderList(list.id, 'down')" aria-label="Move list right" title="Move list right">Move Right →</button>
+                            <button type="button" class="config-action-btn btn-danger-soft" @click="clearCompleted(list.id)" aria-label="Clear completed tasks" title="Clear completed tasks">Clear Completed</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Standard List Content -->
+                <template x-if="list.type === 'standard'">
+                    <div style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                        <div class="items" :id="'list_items_' + list.id">
+                            <template x-for="item in list.items" :key="item.id">
+                                <div class="item-row" :class="{'completed': item.status === 'done', 'item-dirty': item._dirty}">
+                                    <template x-if="list.features?.checkboxes">
+                                        <input type="checkbox" :checked="item.status === 'done'" @change="toggleStatus(list.id, item.id)" 
+                                               :aria-label="item.status === 'done' ? 'Mark task incomplete' : 'Mark task complete'" 
+                                               :title="item.status === 'done' ? 'Mark task incomplete' : 'Mark task complete'">
+                                    </template>
+                                    
+                                    <template x-if="!item._editing">
+                                        <span class="item-title" 
+                                              :title="item.title" 
+                                              @dblclick="startEditingItem(item)" 
+                                              x-text="item._dirty ? item._editTitle : item.title"></span>
+                                    </template>
+
+                                    <template x-if="item._editing">
+                                        <textarea class="item-edit-input" 
+                                                  x-model="item._editTitle" 
+                                                  @input="
+                                                      item._dirty = (item._editTitle.trim() !== item.title.trim());
+                                                      autoResizeTextarea($el);
+                                                  " 
+                                                  @keydown="handleItemEditKeydown($event, list.id, item)" 
+                                                  @blur="handleItemBlur(item)" 
+                                                  :id="'item_edit_' + item.id"
+                                                  aria-label="Edit task title"
+                                                  rows="1"></textarea>
+                                    </template>
+                                    
+                                    <!-- Last Updated badge -->
+                                    <template x-if="list.features?.last_updated && item.updated_at">
+                                        <span class="time-badge" :title="'Updated: ' + item.updated_at" x-text="relativeTime(item.updated_at)"></span>
+                                    </template>
+
+                                    <div class="item-actions">
+                                        <template x-if="list.features?.reorder">
+                                            <span>
+                                                <button type="button" @click="reorderItem(list.id, item.id, 'up')" aria-label="Move task up" title="Move task up">↑</button>
+                                                <button type="button" @click="reorderItem(list.id, item.id, 'down')" aria-label="Move task down" title="Move task down">↓</button>
+                                            </span>
+                                        </template>
+                                        <button type="button" @click="confirmDelete(item.id, 'item', list.id)" 
+                                                :class="{ 'btn-danger': deleteConfirmId === item.id }"
+                                                :aria-label="deleteConfirmId === item.id ? 'Confirm delete task' : 'Delete task'"
+                                                :title="deleteConfirmId === item.id ? 'Click to confirm delete' : 'Delete task'"
+                                                x-text="deleteConfirmId === item.id ? 'Sure?' : '✕'"></button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="quick-add quick-add-bottom">
+                            <input type="text" placeholder="+ Add item..." aria-label="Add new item to list" @keydown.enter="addItem(list.id, { title: $event.target.value }); $event.target.value = ''">
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Clipboard List Content (Search Results) -->
+                <template x-if="list.type === 'clipboard'">
+                    <div style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                        <div class="items" :id="'list_items_' + list.id">
+                            <template x-for="item in (searchQuery ? (list.items || []).filter(i => i.key && i.key.toLowerCase().includes(searchQuery.toLowerCase().trim())) : (list.items || []))" :key="item.id">
+                                <div class="item-row cb-row">
+                                    <span class="cb-key" :title="item.key" x-text="item.key"></span>
+                                    <span class="cb-val" 
+                                          :title="list.features?.sensitive ? '••••••••' : item.value"
+                                          x-text="list.features?.sensitive ? '••••••••' : item.value"></span>
+                                    <div class="item-actions">
+                                        <button type="button" @click="copyToClipboard(item.value)" 
+                                                aria-label="Copy value to clipboard" 
+                                                title="Copy value">⎘</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+            </div>
+        </template>
+    </main>
+
+    <!-- Copy notification -->
+    <div x-show="showCopyToast" x-cloak class="toast">Copied!</div>
+</body>
+</html>

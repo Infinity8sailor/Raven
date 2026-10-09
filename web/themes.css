@@ -1,0 +1,64 @@
+/* Nero (formerly Obsidian, default dark) */
+[data-theme="obsidian"] {
+  --bg: #000000;
+  --bg-card: #141414;
+  --bg-input: #000000;
+  --text: #e0e0e0;
+  --text-muted: #737373;
+  --accent: #555555;
+  --border: #2a2a2a;
+  --danger: #d32f2f;
+  --success: #388e3c;
+}
+
+/* Chlorophyll (deep forest green) */
+[data-theme="chlorophyll"] {
+  --bg: #0a1f0a;
+  --bg-card: #0f2b0f;
+  --bg-input: #0a1f0a;
+  --text: #b5d6a7;
+  --text-muted: #6d8c60;
+  --accent: #4caf50;
+  --border: #1b3d1b;
+  --danger: #e57373;
+  --success: #81c784;
+}
+
+/* Infrared (warm dark red) */
+[data-theme="infrared"] {
+  --bg: #1a0a0a;
+  --bg-card: #241010;
+  --bg-input: #1a0a0a;
+  --text: #e0b0b0;
+  --text-muted: #8c6060;
+  --accent: #ef5350;
+  --border: #3d1b1b;
+  --danger: #ff8a80;
+  --success: #a5d6a7;
+}
+
+/* Ultraviolet (deep purple) */
+[data-theme="ultraviolet"] {
+  --bg: #110a1f;
+  --bg-card: #1a1030;
+  --bg-input: #110a1f;
+  --text: #c5b0e0;
+  --text-muted: #7a6099;
+  --accent: #ab47bc;
+  --border: #2d1b4d;
+  --danger: #f48fb1;
+  --success: #80cbc4;
+}
+
+/* Sepia (warm amber) */
+[data-theme="sepia"] {
+  --bg: #1c1a14;
+  --bg-card: #252219;
+  --bg-input: #1c1a14;
+  --text: #d4c5a0;
+  --text-muted: #8c7f5e;
+  --accent: #ff8f00;
+  --border: #3d3520;
+  --danger: #ff8a65;
+  --success: #aed581;
+}

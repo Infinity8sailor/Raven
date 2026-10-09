@@ -1,0 +1,5 @@
+{
+  "port": 9471,
+  "data_dir": "data",
+  "web_dir": "web"
+}

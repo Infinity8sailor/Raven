@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0.0",
+  "lists": [
+    {
+      "id": "lst_a1b2c3",
+      "type": "standard",
+      "title": "Sprint 42",
+      "created_at": "2026-10-07T22:00:00Z",
+      "order": 0,
+      "pinned": false,
+      "archived": false,
+      "features": {
+        "reorder": true,
+        "checkboxes": true,
+        "due_date": true,
+        "last_updated": true,
+        "sprint_dates": true,
+        "auto_collapse": true
+      },
+      "sprint_start": "2026-10-01",
+      "sprint_end": "2026-10-14",
+      "items": [
+        {
+          "id": "itm_x7y8z9",
+          "title": "Fix auth middleware timeout",
+          "status": "todo",
+          "due_date": "2026-10-09",
+          "order": 0,
+          "collapsed": false,
+          "created_at": "2026-10-07T22:00:00Z",
+          "updated_at": "2026-10-07T23:15:00Z",
+          "completed_at": ""
+        }
+      ]
+    },
+    {
+      "id": "lst_d4e5f6",
+      "type": "clipboard",
+      "title": "Dev Endpoints",
+      "created_at": "2026-10-07T22:00:00Z",
+      "order": 1,
+      "pinned": true,
+      "archived": false,
+      "features": {
+        "reorder": false,
+        "checkboxes": false,
+        "due_date": false,
+        "last_updated": false,
+        "sprint_dates": false,
+        "auto_collapse": true,
+        "sensitive": true
+      },
+      "items": [
+        {
+          "id": "itm_k1l2m3",
+          "key": "Staging API",
+          "value": "https://staging.api.co/v2",
+          "order": 0,
+          "collapsed": false,
+          "created_at": "2026-10-07T22:00:00Z",
+          "updated_at": "2026-10-07T22:00:00Z"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "theme": "obsidian",
+    "show_archived": false,
+    "backup_mode": "on_write",
+    "backup_max_count": 50
+  },
+  "meta": {
+    "last_backup": "2026-10-07T22:00:00Z",
+    "last_migration": "1.0.0"
+  }
+}
