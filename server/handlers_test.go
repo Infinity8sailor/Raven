@@ -14,6 +14,9 @@ func setupTestServer(t *testing.T) *Server {
 	dir := t.TempDir()
 	storage := NewStorage(dir)
 	storage.Load()
+	storage.UpdateStore(func(store *TaskStore) {
+		store.Lists = []List{}
+	})
 	cfg := &Config{Port: 8080, WebDir: t.TempDir()}
 	s := NewServer(cfg, storage)
 	s.SetupRoutes()

@@ -140,7 +140,7 @@ go test -race ./...
 
 ## 📦 Autostart / Background Service Installation
 
-- **Windows**: Run `powershell -ExecutionPolicy Bypass -File scripts/install-win.ps1` to register a logon task.
+- **Windows**: Run `powershell -ExecutionPolicy Bypass -File scripts/install-win.ps1` to build the latest executable and configure automatic startup on logon (no administrator privileges needed). To remove, run `scripts/uninstall-win.ps1`.
 - **Linux**: Run `bash scripts/install-linux.sh` to install a systemd user unit.
 - **macOS**: Run `bash scripts/install-mac.sh` to create a `launchd` plist.
 

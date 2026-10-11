@@ -272,11 +272,175 @@ func ValidateCreateItemRequest(req CreateItemRequest, listType string) error {
 
 // --- Default Data ---
 
-// NewDefaultStore creates a fresh TaskStore with default settings.
+// GetDefaultSeedLists returns introductory lists showcasing the app's features.
+func GetDefaultSeedLists() []List {
+	now := NowISO()
+	return []List{
+		{
+			ID:        "lst_welcome",
+			Type:      ListTypeStandard,
+			Title:     "Welcome to Raven",
+			CreatedAt: now,
+			Order:     0,
+			Pinned:    true,
+			Archived:  false,
+			Features: Features{
+				Reorder:      true,
+				Checkboxes:   true,
+				DueDate:      false,
+				LastUpdated:  true,
+				SprintDates:  false,
+				AutoCollapse: true,
+			},
+			Items: []Item{
+				{
+					ID:        "itm_seed_1",
+					Title:     "Double-click any item to edit inline (Enter to save)",
+					Status:    StatusTodo,
+					Order:     0,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+				{
+					ID:        "itm_seed_2",
+					Title:     "Click checkbox on the left to mark tasks completed",
+					Status:    StatusTodo,
+					Order:     1,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+				{
+					ID:        "itm_seed_3",
+					Title:     "Click 3-dots (⋮) to configure features, pin, or archive",
+					Status:    StatusTodo,
+					Order:     2,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+				{
+					ID:          "itm_seed_4",
+					Title:       "Use ↑ / ↓ arrow buttons to reorder your tasks",
+					Status:      StatusDone,
+					Order:       3,
+					CreatedAt:   now,
+					UpdatedAt:   now,
+					CompletedAt: now,
+				},
+				{
+					ID:          "itm_seed_5",
+					Title:       "Customize themes & fonts in top-right Settings (⛭)",
+					Status:      StatusDone,
+					Order:       4,
+					CreatedAt:   now,
+					UpdatedAt:   now,
+					CompletedAt: now,
+				},
+			},
+		},
+		{
+			ID:          "lst_sprint_demo",
+			Type:        ListTypeStandard,
+			Title:       "Sprint 1: Explore Features",
+			CreatedAt:   now,
+			Order:       1,
+			Pinned:      false,
+			Archived:    false,
+			SprintStart: "2026-10-01",
+			SprintEnd:   "2026-10-15",
+			Features: Features{
+				Reorder:      true,
+				Checkboxes:   true,
+				DueDate:      true,
+				LastUpdated:  true,
+				SprintDates:  true,
+				AutoCollapse: true,
+			},
+			Items: []Item{
+				{
+					ID:        "itm_seed_6",
+					Title:     "Press '/' or click search to filter lists and clipboard keys",
+					Status:    StatusTodo,
+					DueDate:   "2026-10-12",
+					Order:     0,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+				{
+					ID:        "itm_seed_7",
+					Title:     "Click '+ List' in header to create new task boards",
+					Status:    StatusTodo,
+					DueDate:   "2026-10-14",
+					Order:     1,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+				{
+					ID:          "itm_seed_8",
+					Title:       "Offline JSON storage persists instantly to data/tasks.json",
+					Status:      StatusDone,
+					Order:       2,
+					CreatedAt:   now,
+					UpdatedAt:   now,
+					CompletedAt: now,
+				},
+				{
+					ID:          "itm_seed_9",
+					Title:       "Automated rolling backups kept safely in data/backups",
+					Status:      StatusDone,
+					Order:       3,
+					CreatedAt:   now,
+					UpdatedAt:   now,
+					CompletedAt: now,
+				},
+			},
+		},
+		{
+			ID:        "lst_clipboard_demo",
+			Type:      ListTypeClipboard,
+			Title:     "Quick Clipboard",
+			CreatedAt: now,
+			Order:     2,
+			Pinned:    false,
+			Archived:  false,
+			Features: Features{
+				Sensitive:    true,
+				AutoCollapse: true,
+			},
+			Items: []Item{
+				{
+					ID:        "itm_seed_10",
+					Key:       "Local Dev Server",
+					Value:     "http://localhost:9471",
+					Order:     0,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+				{
+					ID:        "itm_seed_11",
+					Key:       "Example API Token",
+					Value:     "rvn_sec_live_9471_token",
+					Order:     1,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+				{
+					ID:        "itm_seed_12",
+					Key:       "Quick Search Tip",
+					Value:     "Press / anytime to search",
+					Order:     2,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
+			},
+		},
+	}
+}
+
+// NewDefaultStore creates a fresh TaskStore with default settings and introductory seed lists.
 func NewDefaultStore() *TaskStore {
 	return &TaskStore{
 		SchemaVersion: CurrentSchemaVersion,
-		Lists:         []List{},
+		Lists:         GetDefaultSeedLists(),
 		Settings: Settings{
 			Theme:          "obsidian",
 			ShowArchived:   false,

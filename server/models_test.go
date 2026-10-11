@@ -155,7 +155,27 @@ func TestNewDefaultStore(t *testing.T) {
 	if store.Settings.Theme != "obsidian" {
 		t.Errorf("expected obsidian, got %s", store.Settings.Theme)
 	}
-	if len(store.Lists) != 0 {
-		t.Errorf("expected empty lists, got %d", len(store.Lists))
+	if len(store.Lists) == 0 {
+		t.Fatalf("expected seed lists, got 0")
+	}
+
+	hasStandard := false
+	hasClipboard := false
+	for _, l := range store.Lists {
+		if l.Type == ListTypeStandard {
+			hasStandard = true
+			if len(l.Items) == 0 {
+				t.Errorf("standard list %s should have seed items", l.Title)
+			}
+		}
+		if l.Type == ListTypeClipboard {
+			hasClipboard = true
+			if len(l.Items) == 0 {
+				t.Errorf("clipboard list %s should have seed items", l.Title)
+			}
+		}
+	}
+	if !hasStandard || !hasClipboard {
+		t.Errorf("expected both standard and clipboard lists, got standard=%v, clipboard=%v", hasStandard, hasClipboard)
 	}
 }

@@ -2,13 +2,76 @@
   "schema_version": "1.0.0",
   "lists": [
     {
-      "id": "lst_a1b2c3",
+      "id": "lst_welcome",
       "type": "standard",
-      "title": "Sprint 42",
-      "created_at": "2026-10-07T22:00:00Z",
+      "title": "Welcome to Raven",
+      "created_at": "2026-10-10T12:00:00Z",
       "order": 0,
+      "pinned": true,
+      "archived": false,
+      "features": {
+        "reorder": true,
+        "checkboxes": true,
+        "due_date": false,
+        "last_updated": true,
+        "sprint_dates": false,
+        "auto_collapse": true
+      },
+      "items": [
+        {
+          "id": "itm_seed_1",
+          "title": "Double-click any item to edit inline (Enter to save)",
+          "status": "todo",
+          "order": 0,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_2",
+          "title": "Click checkbox on the left to mark tasks completed",
+          "status": "todo",
+          "order": 1,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_3",
+          "title": "Click 3-dots (⋮) to configure features, pin, or archive",
+          "status": "todo",
+          "order": 2,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_4",
+          "title": "Use ↑ / ↓ arrow buttons to reorder your tasks",
+          "status": "done",
+          "order": 3,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z",
+          "completed_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_5",
+          "title": "Customize themes & fonts in top-right Settings (⛭)",
+          "status": "done",
+          "order": 4,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z",
+          "completed_at": "2026-10-10T12:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "lst_sprint_demo",
+      "type": "standard",
+      "title": "Sprint 1: Explore Features",
+      "created_at": "2026-10-10T12:00:00Z",
+      "order": 1,
       "pinned": false,
       "archived": false,
+      "sprint_start": "2026-10-01",
+      "sprint_end": "2026-10-15",
       "features": {
         "reorder": true,
         "checkboxes": true,
@@ -17,48 +80,81 @@
         "sprint_dates": true,
         "auto_collapse": true
       },
-      "sprint_start": "2026-10-01",
-      "sprint_end": "2026-10-14",
       "items": [
         {
-          "id": "itm_x7y8z9",
-          "title": "Fix auth middleware timeout",
+          "id": "itm_seed_6",
+          "title": "Press '/' or click search to filter lists and clipboard keys",
           "status": "todo",
-          "due_date": "2026-10-09",
+          "due_date": "2026-10-12",
           "order": 0,
-          "collapsed": false,
-          "created_at": "2026-10-07T22:00:00Z",
-          "updated_at": "2026-10-07T23:15:00Z",
-          "completed_at": ""
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_7",
+          "title": "Click '+ List' in header to create new task boards",
+          "status": "todo",
+          "due_date": "2026-10-14",
+          "order": 1,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_8",
+          "title": "Offline JSON storage persists instantly to data/tasks.json",
+          "status": "done",
+          "order": 2,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z",
+          "completed_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_9",
+          "title": "Automated rolling backups kept safely in data/backups",
+          "status": "done",
+          "order": 3,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z",
+          "completed_at": "2026-10-10T12:00:00Z"
         }
       ]
     },
     {
-      "id": "lst_d4e5f6",
+      "id": "lst_clipboard_demo",
       "type": "clipboard",
-      "title": "Dev Endpoints",
-      "created_at": "2026-10-07T22:00:00Z",
-      "order": 1,
-      "pinned": true,
+      "title": "Quick Clipboard",
+      "created_at": "2026-10-10T12:00:00Z",
+      "order": 2,
+      "pinned": false,
       "archived": false,
       "features": {
-        "reorder": false,
-        "checkboxes": false,
-        "due_date": false,
-        "last_updated": false,
-        "sprint_dates": false,
-        "auto_collapse": true,
-        "sensitive": true
+        "sensitive": true,
+        "auto_collapse": true
       },
       "items": [
         {
-          "id": "itm_k1l2m3",
-          "key": "Staging API",
-          "value": "https://staging.api.co/v2",
+          "id": "itm_seed_10",
+          "key": "Local Dev Server",
+          "value": "http://localhost:9471",
           "order": 0,
-          "collapsed": false,
-          "created_at": "2026-10-07T22:00:00Z",
-          "updated_at": "2026-10-07T22:00:00Z"
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_11",
+          "key": "Example API Token",
+          "value": "rvn_sec_live_9471_token",
+          "order": 1,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
+        },
+        {
+          "id": "itm_seed_12",
+          "key": "Quick Search Tip",
+          "value": "Press / anytime to search",
+          "order": 2,
+          "created_at": "2026-10-10T12:00:00Z",
+          "updated_at": "2026-10-10T12:00:00Z"
         }
       ]
     }
@@ -70,7 +166,7 @@
     "backup_max_count": 50
   },
   "meta": {
-    "last_backup": "2026-10-07T22:00:00Z",
+    "last_backup": "2026-10-10T12:00:00Z",
     "last_migration": "1.0.0"
   }
 }

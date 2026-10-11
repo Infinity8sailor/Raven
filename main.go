@@ -2,11 +2,25 @@ package main
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 
 	"raven/server"
 )
 
 func main() {
+	// If current working directory lacks web assets, switch to executable directory
+	if exePath, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exePath)
+		if _, err := os.Stat("web"); os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(exeDir, "web")); err == nil {
+				if err := os.Chdir(exeDir); err != nil {
+					log.Printf("[Raven] Could not change directory to %s: %v", exeDir, err)
+				}
+			}
+		}
+	}
+
 	config, err := server.LoadConfig("config.json")
 	if err != nil {
 		log.Printf("[Raven] Could not load config.json: %v", err)
