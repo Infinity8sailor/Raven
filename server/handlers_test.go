@@ -231,8 +231,44 @@ func TestCreateClipboardItem(t *testing.T) {
 	}
 	var item Item
 	json.Unmarshal(rr2.Body.Bytes(), &item)
-	if item.Key != "k1" || item.Value != "v1" {
-		t.Errorf("expected k1/v1, got %s/%s", item.Key, item.Value)
+	if item.Key != "k1" || item.Value != "v1" || item.Sensitive {
+		t.Errorf("expected k1/v1/non-sensitive, got %s/%s/%v", item.Key, item.Value, item.Sensitive)
+	}
+
+	// Test sensitive item with valid key and value
+	sens := true
+	rr3 := doRequest(t, s, "POST", "/lists/"+l.ID+"/items", CreateItemRequest{Key: "k2", Value: "v2", Sensitive: &sens})
+	if rr3.Code != http.StatusCreated {
+		t.Errorf("expected 201 for sensitive key/value, got %d", rr3.Code)
+	}
+	var item2 Item
+	json.Unmarshal(rr3.Body.Bytes(), &item2)
+	if item2.Key != "k2" || item2.Value != "v2" || !item2.Sensitive {
+		t.Errorf("expected k2/v2 and sensitive=true, got %s/%s/%v", item2.Key, item2.Value, item2.Sensitive)
+	}
+
+	// Rejects empty key
+	rrEmptyKey := doRequest(t, s, "POST", "/lists/"+l.ID+"/items", CreateItemRequest{Key: "", Value: "v3"})
+	if rrEmptyKey.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for empty key, got %d", rrEmptyKey.Code)
+	}
+
+	// Rejects empty value
+	rrEmptyVal := doRequest(t, s, "POST", "/lists/"+l.ID+"/items", CreateItemRequest{Key: "k3", Value: ""})
+	if rrEmptyVal.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for empty value, got %d", rrEmptyVal.Code)
+	}
+
+	// Verify that Sensitive cannot be changed via PUT update on existing item (creation only)
+	sensFalse := false
+	rrUpdate := doRequest(t, s, "PUT", "/lists/"+l.ID+"/items/"+item2.ID, UpdateItemRequest{Sensitive: &sensFalse})
+	if rrUpdate.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rrUpdate.Code)
+	}
+	var updatedItem Item
+	json.Unmarshal(rrUpdate.Body.Bytes(), &updatedItem)
+	if !updatedItem.Sensitive {
+		t.Errorf("sensitive flag must not change on update, should remain true")
 	}
 }
 
@@ -360,10 +396,9 @@ func TestSearchSensitive(t *testing.T) {
 	json.Unmarshal(rr1.Body.Bytes(), &l)
 
 	sensitive := true
-	doRequest(t, s, "PATCH", "/lists/"+l.ID+"/features", UpdateFeaturesRequest{Sensitive: &sensitive})
-	doRequest(t, s, "POST", "/lists/"+l.ID+"/items", CreateItemRequest{Key: "k1", Value: "secret_value"})
+	doRequest(t, s, "POST", "/lists/"+l.ID+"/items", CreateItemRequest{Key: "k1", Value: "masked_test_entry", Sensitive: &sensitive})
 
-	rr := doRequest(t, s, "GET", "/search?q=secret_value", nil)
+	rr := doRequest(t, s, "GET", "/search?q=masked_test_entry", nil)
 	var res []interface{}
 	json.Unmarshal(rr.Body.Bytes(), &res)
 	
@@ -378,8 +413,9 @@ func TestSearchSensitive(t *testing.T) {
 	if len(matchedLists) == 0 || len(matchedLists[0].Items) == 0 {
 		t.Fatalf("expected matched clipboard item for key k1, got none")
 	}
-	if matchedLists[0].Items[0].Value != "••••••••" {
-		t.Errorf("expected masked value for sensitive clipboard item, got %s", matchedLists[0].Items[0].Value)
+	expectedMask := strings.Repeat("•", len("masked_test_entry"))
+	if matchedLists[0].Items[0].Value != expectedMask {
+		t.Errorf("expected masked value %s for sensitive clipboard item, got %s", expectedMask, matchedLists[0].Items[0].Value)
 	}
 }
 
@@ -421,6 +457,7 @@ func TestUpdateSettingsInvalidTheme(t *testing.T) {
 
 func TestHealth(t *testing.T) {
 	s := setupTestServer(t)
+	s.SetVersionInfo("v1.0.0", "commit123", "2026-10-12T19:00:00Z")
 	rr := doRequest(t, s, "GET", "/health", nil)
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rr.Code)
@@ -429,6 +466,9 @@ func TestHealth(t *testing.T) {
 	json.Unmarshal(rr.Body.Bytes(), &h)
 	if h.Status != "ok" || h.Uptime == "" {
 		t.Errorf("expected ok with uptime, got %+v", h)
+	}
+	if h.Version != "v1.0.0" || h.GitCommit != "commit123" {
+		t.Errorf("expected v1.0.0 and commit123, got %s / %s", h.Version, h.GitCommit)
 	}
 }
 
@@ -529,14 +569,14 @@ func TestReorderList(t *testing.T) {
 
 func TestSearchKeyOnly_IgnoresValueMatches(t *testing.T) {
 	s := setupTestServer(t)
-	rr1 := doRequest(t, s, "POST", "/lists", CreateListRequest{Type: "clipboard", Title: "Secrets"})
+	rr1 := doRequest(t, s, "POST", "/lists", CreateListRequest{Type: "clipboard", Title: "Endpoints"})
 	var l List
 	json.Unmarshal(rr1.Body.Bytes(), &l)
 
-	doRequest(t, s, "POST", "/lists/"+l.ID+"/items", CreateItemRequest{Key: "database_url", Value: "super_secret_host_123"})
+	doRequest(t, s, "POST", "/lists/"+l.ID+"/items", CreateItemRequest{Key: "database_url", Value: "internal_cluster_host_123"})
 
 	// Search for value text: MUST NOT match
-	rrVal := doRequest(t, s, "GET", "/search?q=super_secret_host", nil)
+	rrVal := doRequest(t, s, "GET", "/search?q=internal_cluster_host", nil)
 	var resVal []List
 	json.Unmarshal(rrVal.Body.Bytes(), &resVal)
 	if len(resVal) != 0 {
@@ -549,5 +589,50 @@ func TestSearchKeyOnly_IgnoresValueMatches(t *testing.T) {
 	json.Unmarshal(rrKey.Body.Bytes(), &resKey)
 	if len(resKey) == 0 || len(resKey[0].Items) == 0 {
 		t.Errorf("expected match for key 'database', got none")
+	}
+}
+
+func TestCreateListWithProfile(t *testing.T) {
+	s := setupTestServer(t)
+	rr := doRequest(t, s, "POST", "/lists", CreateListRequest{Type: "standard", Title: "Work Tasks", Profile: "work"})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", rr.Code)
+	}
+	var l List
+	json.Unmarshal(rr.Body.Bytes(), &l)
+	if l.Profile != "work" {
+		t.Errorf("expected profile work, got %s", l.Profile)
+	}
+
+	newProf := "ai"
+	rrUp := doRequest(t, s, "PUT", "/lists/"+l.ID, UpdateListRequest{Profile: &newProf})
+	if rrUp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rrUp.Code)
+	}
+	var updated List
+	json.Unmarshal(rrUp.Body.Bytes(), &updated)
+	if updated.Profile != "ai" {
+		t.Errorf("expected updated profile ai, got %s", updated.Profile)
+	}
+}
+
+func TestUpdateSettingsProfiles(t *testing.T) {
+	s := setupTestServer(t)
+	activeProf := "ai"
+	profs := []string{"all", "work", "personal", "ai"}
+	rr := doRequest(t, s, "PUT", "/settings", UpdateSettingsRequest{
+		ActiveProfile: &activeProf,
+		Profiles:      &profs,
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	var st Settings
+	json.Unmarshal(rr.Body.Bytes(), &st)
+	if st.ActiveProfile != "ai" {
+		t.Errorf("expected active profile ai, got %s", st.ActiveProfile)
+	}
+	if len(st.Profiles) != 4 {
+		t.Errorf("expected 4 profiles, got %d", len(st.Profiles))
 	}
 }

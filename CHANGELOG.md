@@ -7,8 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-17
+
 ### Added
-- Default seed lists on fresh install: automatically initializes `data/tasks.json` on first run with rich interactive demonstration lists ("Welcome to Raven", "Sprint 1: Explore Features", and "Quick Clipboard") that showcase all key app features (double-click inline editing, completion checkboxes, reordering, sprint dates, 3-dot configure panel, themes, search, and masked clipboard tokens).
+- Explicit "Sensitive" Checkbox Tag in Clipboard Quick-Add: added a clean `[ ] Sensitive` tag in the global clipboard quick-add bar with lock indicator (`🔒`) when checked, ensuring entries can be marked sensitive directly upon creation.
+- Per-item Sensitive Masking & Eye Toggles: entries tagged as sensitive are masked with exact-length bullet characters (`•`), with reveal/hide eye toggles (`ø` / `⚆`) in the global clipboard modal and permanent masking in search results.
+- Automatic Legacy Migration for Sensitive Lists: automatically migrates any clipboard items residing in lists that previously had `features.sensitive = true` to `item.sensitive = true`.
+- Strict Non-Empty Validation: enforced non-empty key and value validation across frontend quick-add and backend `ValidateClipboardKey` / `ValidateClipboardValue`.
+
+### Changed
+- Unified Clipboard Naming: renamed clipboard lists to "Clipboard" (removing legacy "Dev Endpoints" and "Quick Clipboard" names) and eliminated the redundant subheader inside the clipboard overlay modal.
+
+### Removed
+- "Hell No Drama" Cleanup: pruned over-engineered project management layers:
+  - Removed Sprint Dates: dropped sprint date range pickers (`sprint_start`, `sprint_end`) and header sprint date pills.
+  - Removed Focus Profile Circles & Multi-Tenancy: removed profile circles, profile dropdown menus, list profile tags, and profile filtering from navigation.
+  - Removed List-Level Sensitive Mode (`⚿` / `◌`): streamlined privacy strictly to per-item sensitive tagging.
+- Auto-check and Overwrite in Windows Installer: enhanced [`scripts/install-win.ps1`](scripts/install-win.ps1) to automatically detect pre-existing `RavenApp` keys in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` and the Windows Startup shortcut (`Raven.lnk`), inspect their targets, and overwrite them with `-Force` pointing to the current executable path, keeping the Go server binary pure and decoupled from OS registry manipulation.
+- Customizable Port Configuration: added `-port <number>` CLI flag to `main.go`, support for `RAVEN_PORT` and `PORT` environment variables in [`server/config.go`](server/config.go), and `-Port` parameter in [`scripts/install-win.ps1`](scripts/install-win.ps1) with full unit test suite in [`server/config_test.go`](server/config_test.go), ensuring the HTTP port is never hardcoded.
+- Automated Git Build Scripts with Version Check: created [`scripts/build.ps1`](scripts/build.ps1) and [`scripts/build.sh`](scripts/build.sh) which verify git tags (`git tag -l $Version`) and abort with an error on duplicate releases, execute the full test suite (`go test -v ./...`), compile binary with `-ldflags` (`Version`, `GitCommit`, `BuildDate`), and validate binary output via `-version`.
+- Compact 15-copy tiered backup retention: optimized snapshot cap to 15 files max (<250 KB total disk footprint) preserving 5 recent live edits (debounced), 7 daily snapshots for the past week, and 2 weekly snapshots for the past 14 days without sacrificing historical rollback granularity.
+- Official MIT License: added [`LICENSE`](LICENSE) granting free, open-source usage, modification, and offline distribution.
+- Focus Profile Circles: integrated compact circular profile badges directly into the main navigation bar (`All`, `W` with red background for work, `P` with blue background for personal, `AI` with purple background, etc.), displaying up to 3 direct circles with a dropdown overlay menu for additional profiles, removing the second navigation row.
+- "Copy All Items" action in 3-dot list options menu: copies all items in the list to the clipboard in one click with Markdown completion checkboxes (`[ ]` / `[x]`) for tasks or key-value format for clipboard lists.
+- Enhanced Date/Day/Week header display: positioned live clock directly next to the Raven logo in a single horizontal row, aligned along the bottom edge of the navigation bar with Day (`Mon`, `Tue`), date, ISO calendar week (`W41`), and local time.
+- Default seed lists on fresh install: automatically initializes `data/tasks.json` on first run with rich interactive demonstration lists ("Welcome to Raven", "Sprint 1: Explore Features", and "Quick Clipboard") that showcase all key app features (double-click inline editing, completion checkboxes, reordering, sprint dates, 3-dot configure panel, themes, search, and masked clipboard items).
 - Reliable non-admin Windows startup installer: updated [`scripts/install-win.ps1`](scripts/install-win.ps1) to automatically compile the latest binary with Go (`go build -ldflags="-s -w" -o raven.exe main.go`) and configure user-level auto-start via Windows Startup folder shortcut (`Raven.lnk`) and HKCU Run registry without requiring Administrator privileges.
 - Dedicated Windows uninstaller script ([`scripts/uninstall-win.ps1`](scripts/uninstall-win.ps1)) to cleanly remove startup shortcuts and registry entries.
 - Executable directory fallback in [`main.go`](main.go) ensuring Raven seamlessly resolves `web/` assets and `config.json` even when launched with an arbitrary working directory (such as Windows logon).
@@ -23,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - True modal overlay backdrop for the Global Clipboard panel with keyboard and backdrop-click dismissal.
 
 ### Changed
+- Resolved 3-dot dropdown menu clipping and z-index collision: removed overflow clipping on list cards, raised active card z-index dynamically when the dropdown menu is open, ensuring the 3-dot menu is fully visible even on empty list cards.
 - Updated pin icon: replaced the vertical shape with a sleek, crisp angled pushpin (`pin-angle-fill`) both beside pinned list titles and in the 3-dot dropdown menu.
 - Refined search matching: global search results now include clipboard items by matching keys only (never matching value text). Sensitive clipboard values in search results are strictly masked (`••••••••`) with no unhide action button; the per-item reveal toggle is exclusively accessible within the dedicated Global Clipboard overlay panel.
 - Improved inline item editing: removed textarea scrollbars completely (`overflow: hidden`), added reactive auto-resizing (height dynamically increases as text wraps and contracts as text is removed), and ensured pressing Enter immediately saves changes without inserting unwanted newlines.

@@ -33,6 +33,9 @@ func (s *Server) handleCreateItem(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: NowISO(),
 			UpdatedAt: NowISO(),
 		}
+		if req.Sensitive != nil {
+			newItem.Sensitive = *req.Sensitive
+		}
 		if list.Type == ListTypeStandard {
 			newItem.Status = StatusTodo
 		}

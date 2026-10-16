@@ -7,9 +7,11 @@ document.addEventListener('alpine:init', () => {
         showClipboardPanel: false,
         newListModal: false,
         newListTitle: '',
+        layoutMode: 'auto', // 'auto', '1-col', '2-col', '3-col', '4-col'
         settings: { theme: 'random', backup_mode: 'on_write', schema_version: '1.0.0' },
         activeTheme: 'obsidian',
         currentFont: 'classic',
+        appVersion: 'v.1.0.1',
         clock: '',
         loading: true,
         deleteConfirmId: null,
@@ -17,6 +19,7 @@ document.addEventListener('alpine:init', () => {
         deleteConfirmParent: null,
         deleteTimeout: null,
         showCopyToast: false,
+        cbSensitiveInput: false,
 
         themes: ['obsidian', 'chlorophyll', 'infrared', 'ultraviolet', 'sepia'],
 
@@ -26,15 +29,32 @@ document.addEventListener('alpine:init', () => {
 
             try {
                 this.currentFont = localStorage.getItem('raven_font') || 'classic';
+                this.layoutMode = localStorage.getItem('raven_layout') || 'auto';
             } catch (_) {
                 this.currentFont = 'classic';
+                this.layoutMode = 'auto';
             }
             this.applyFont(this.currentFont);
 
             await this.loadSettings();
             await this.loadLists();
+            await this.fetchVersion();
             this.applyTheme(this.settings.theme);
             this.loading = false;
+        },
+
+        async fetchVersion() {
+            const data = await this.api('GET', '/api/health');
+            if (data && data.version) {
+                let v = data.version;
+                if (v.startsWith('v.')) {
+                    this.appVersion = v;
+                } else if (v.startsWith('v')) {
+                    this.appVersion = `v.${v.substring(1)}`;
+                } else {
+                    this.appVersion = `v.${v}`;
+                }
+            }
         },
 
         applyFont(fontName) {
@@ -52,13 +72,37 @@ document.addEventListener('alpine:init', () => {
             } catch (_) {}
         },
 
+        changeLayout(mode) {
+            this.layoutMode = mode;
+            try {
+                localStorage.setItem('raven_layout', mode);
+            } catch (_) {}
+        },
+
+
+
         updateClock() {
             const now = new Date();
             const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthStr = monthNames[now.getMonth()];
             const day = String(now.getDate()).padStart(2, '0');
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayName = days[now.getDay()];
+            
+            // ISO week number
+            const target = new Date(now.valueOf());
+            const dayNr = (now.getDay() + 6) % 7;
+            target.setDate(target.getDate() - dayNr + 3);
+            const firstThursday = target.valueOf();
+            target.setMonth(0, 1);
+            if (target.getDay() !== 4) {
+                target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+            }
+            const weekNumber = 1 + Math.ceil((firstThursday - target) / 604800000);
+            
             const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            this.clock = `${year}-${month}-${day} ${time}`;
+            this.clock = `${time}   -${dayName}, ${day} ${monthStr}, ${year}  w${weekNumber}`;
         },
 
         applyTheme(themeName) {
@@ -86,8 +130,9 @@ document.addEventListener('alpine:init', () => {
 
         get filteredLists() {
             let res = [];
+
             if (!this.searchQuery) {
-                // When not searching, show only standard lists in main grid
+                // When not searching, show standard lists in main grid
                 res = this.lists.filter(l => l.type === 'standard');
             } else {
                 const q = this.searchQuery.toLowerCase().trim();
@@ -102,7 +147,6 @@ document.addEventListener('alpine:init', () => {
                         return false;
                     }
                     if (l.type === 'clipboard') {
-                        // User rule: match keys only and not value text
                         if (l.items) {
                             return l.items.some(i => i.key && i.key.toLowerCase().includes(q));
                         }
@@ -145,7 +189,10 @@ document.addEventListener('alpine:init', () => {
         async loadSettings() {
             const data = await this.api('GET', '/api/settings');
             if (data) {
-                this.settings = data;
+                this.settings = { ...this.settings, ...data };
+                if (!this.settings.profiles || this.settings.profiles.length === 0) {
+                    this.settings.profiles = ['all', 'work', 'personal', 'ai'];
+                }
             }
         },
 
@@ -180,7 +227,11 @@ document.addEventListener('alpine:init', () => {
 
         async submitNewList() {
             if (!this.newListTitle || !this.newListTitle.trim()) return;
-            const newList = await this.api('POST', '/api/lists', { title: this.newListTitle.trim(), type: 'standard' });
+            const payload = {
+                title: this.newListTitle.trim(),
+                type: 'standard'
+            };
+            const newList = await this.api('POST', '/api/lists', payload);
             if (newList) {
                 newList._showSettings = false;
                 newList._collapsed = false;
@@ -191,7 +242,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async createClipboard() {
-            const newList = await this.api('POST', '/api/lists', { title: 'Global Clipboard', type: 'clipboard' });
+            const newList = await this.api('POST', '/api/lists', { title: 'Clipboard', type: 'clipboard' });
             if (newList) {
                 newList._showSettings = false;
                 newList._collapsed = false;
@@ -277,15 +328,27 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        maskSensitive(val) {
+            if (!val) return '';
+            return '•'.repeat(Array.from(val).length);
+        },
+
         async deleteList(listId) {
             this.lists = this.lists.filter(l => l.id !== listId);
             await this.api('DELETE', '/api/lists/' + listId + '?confirm=true');
         },
 
         async addItem(listId, data) {
-            if (Object.values(data).every(v => !v || !v.trim())) return;
             const list = this.lists.find(l => l.id === listId);
             if (!list) return;
+
+            if (list.type === 'standard') {
+                if (!data.title || !data.title.trim()) return;
+            } else if (list.type === 'clipboard') {
+                if (!data.key || !data.key.trim() || !data.value || !data.value.trim()) return;
+                data.key = data.key.trim();
+                data.value = data.value.trim();
+            }
 
             const newItem = await this.api('POST', '/api/lists/' + listId + '/items', data);
             if (newItem) {
@@ -396,6 +459,23 @@ document.addEventListener('alpine:init', () => {
                 this.showCopyToast = true;
                 setTimeout(() => { this.showCopyToast = false; }, 1500);
             }).catch(err => console.error('[Raven] Copy failed', err));
+        },
+
+        copyAllListItems(list) {
+            if (!list || !list.items || list.items.length === 0) {
+                this.copyToClipboard('');
+                return;
+            }
+            let text = '';
+            if (list.type === 'clipboard') {
+                text = list.items.map(i => `${i.key}: ${i.value}`).join('\n');
+            } else {
+                text = list.items.map(i => {
+                    const check = i.status === 'done' ? '[x]' : '[ ]';
+                    return `${check} ${i.title}`;
+                }).join('\n');
+            }
+            this.copyToClipboard(text);
         },
 
         async updateSettings(data) {

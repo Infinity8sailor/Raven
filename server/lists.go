@@ -38,6 +38,7 @@ func (s *Server) handleCreateList(w http.ResponseWriter, r *http.Request) {
 		ID:        GenerateID("lst_"),
 		Type:      req.Type,
 		Title:     req.Title,
+		Profile:   req.Profile,
 		CreatedAt: NowISO(),
 		Features: Features{
 			AutoCollapse: true,
@@ -74,6 +75,9 @@ func (s *Server) handleUpdateList(w http.ResponseWriter, r *http.Request) {
 			if ValidateListTitle(*req.Title) == nil {
 				list.Title = *req.Title
 			}
+		}
+		if req.Profile != nil {
+			list.Profile = *req.Profile
 		}
 		if req.Pinned != nil {
 			list.Pinned = *req.Pinned

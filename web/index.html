@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raven</title>
-    <link rel="stylesheet" href="themes.css?v=15">
-    <link rel="stylesheet" href="styles.css?v=15">
+    <link rel="stylesheet" href="themes.css?v=17">
+    <link rel="stylesheet" href="styles.css?v=17">
     <script>
         try {
             const f = localStorage.getItem('raven_font') || 'classic';
             document.documentElement.setAttribute('data-font', f);
         } catch (_) {}
     </script>
-    <script defer src="app.js?v=15"></script>
+    <script defer src="app.js?v=17"></script>
     <script defer src="vendor/alpine.min.js"></script>
 </head>
 <body x-data="ravenApp()" x-init="init()" :data-theme="activeTheme" :data-font="currentFont">
@@ -20,7 +20,8 @@
     <header class="sticky-header">
         <div class="header-left">
             <span class="logo">🐦‍⬛ Raven</span>
-            <span class="clock" x-text="clock"></span>
+            <span class="app-version" x-text="appVersion">v.1.0.1</span>
+            <span class="clock-sub" x-text="clock"></span>
         </div>
         
         <div class="header-center">
@@ -62,6 +63,17 @@
                 <option value="cosmic">Cosmic Sans (Comic Sans)</option>
             </select>
         </div>
+        <div class="settings-row" style="margin-top: 10px;">
+            <label>Column Layout:</label>
+            <select :value="layoutMode" @change="changeLayout($event.target.value)">
+                <option value="auto">Auto Layout</option>
+                <option value="1-col">1 Column</option>
+                <option value="2-col">2 Columns</option>
+                <option value="3-col">3 Columns</option>
+                <option value="4-col">4 Columns</option>
+            </select>
+        </div>
+
         <div class="settings-row" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; font-size: 0.8rem; color: var(--text-muted);">
             <span>System Status: OK</span> • <span x-text="'Schema v' + settings.schema_version"></span>
         </div>
@@ -82,24 +94,19 @@
             <div class="clipboard-groups" x-show="unifiedClipboard">
                 <template x-if="unifiedClipboard">
                     <div class="cb-group" style="width: 100%;">
-                        <div class="cb-group-header">
-                            <span x-text="unifiedClipboard.title" style="opacity: 0.8; font-size: 0.9rem;"></span>
-                            <div>
-                                <button type="button" @click="unifiedClipboard.features.sensitive = !unifiedClipboard.features.sensitive; toggleFeature(unifiedClipboard.id, 'sensitive', unifiedClipboard.features.sensitive)" 
-                                        :aria-label="unifiedClipboard.features?.sensitive ? 'Sensitive mode active (click to disable)' : 'Sensitive mode inactive (click to enable)'" 
-                                        :title="unifiedClipboard.features?.sensitive ? 'Sensitive mode active (click to disable)' : 'Sensitive mode inactive (click to enable)'" 
-                                        class="small-btn" 
-                                        x-text="unifiedClipboard.features?.sensitive ? '⚿' : '◌'"></button>
-                            </div>
-                        </div>
                         <div class="items" :id="'cb_items_'+unifiedClipboard.id">
                             <template x-for="item in unifiedClipboard.items" :key="item.id">
                                 <div class="item-row cb-row">
-                                    <span class="cb-key" :title="item.key" x-text="item.key"></span>
-                                    <span class="cb-val" :title="unifiedClipboard.features?.sensitive && !item._showSensitive ? '' : item.value"
-                                          x-text="unifiedClipboard.features?.sensitive && !item._showSensitive ? '••••••••' : item.value"></span>
+                                    <span class="cb-key" :title="item.key">
+                                        <template x-if="item.sensitive">
+                                            <span style="font-size: 0.75rem; margin-right: 4px; opacity: 0.8;" title="Sensitive entry">🔒</span>
+                                        </template>
+                                        <span x-text="item.key"></span>
+                                    </span>
+                                    <span class="cb-val" :title="item.sensitive && !item._showSensitive ? '' : item.value"
+                                          x-text="item.sensitive && !item._showSensitive ? maskSensitive(item.value) : item.value"></span>
                                     <div class="item-actions">
-                                        <template x-if="unifiedClipboard.features?.sensitive">
+                                        <template x-if="item.sensitive">
                                             <button type="button" @click="item._showSensitive = !item._showSensitive" 
                                                     :aria-label="item._showSensitive ? 'Hide sensitive value' : 'Show sensitive value'"
                                                     :title="item._showSensitive ? 'Hide sensitive value' : 'Show sensitive value'"
@@ -117,15 +124,35 @@
                                 </div>
                             </template>
                         </div>
-                        <div class="quick-add flex-add quick-add-bottom">
-                            <input type="text" x-ref="'cbKey_'+unifiedClipboard.id" placeholder="Key" :id="'cbKey_'+unifiedClipboard.id" aria-label="Clipboard entry key">
+                        <div class="quick-add flex-add quick-add-bottom" style="align-items: center;">
+                            <input type="text" placeholder="Key" :id="'cbKey_'+unifiedClipboard.id" aria-label="Clipboard entry key"
+                                   @keydown.enter="document.getElementById('cbVal_'+unifiedClipboard.id)?.focus()">
                             <input type="text" placeholder="Value" :id="'cbVal_'+unifiedClipboard.id" aria-label="Clipboard entry value"
                                    @keydown.enter="
                                        const keyEl = document.getElementById('cbKey_'+unifiedClipboard.id);
                                        const valEl = $event.target;
-                                       addItem(unifiedClipboard.id, { key: keyEl.value, value: valEl.value });
-                                       keyEl.value = ''; valEl.value = '';
+                                       if (keyEl && keyEl.value.trim() && valEl && valEl.value.trim()) {
+                                           addItem(unifiedClipboard.id, { key: keyEl.value.trim(), value: valEl.value.trim(), sensitive: Boolean(cbSensitiveInput) });
+                                           keyEl.value = ''; valEl.value = '';
+                                           cbSensitiveInput = false;
+                                       }
                                    ">
+                            <label class="cb-sensitive-tag" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; user-select: none; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-card); color: var(--text-muted); white-space: nowrap;">
+                                <input type="checkbox" x-model="cbSensitiveInput" aria-label="Mark value as sensitive">
+                                <span>Sensitive</span>
+                                <span x-show="cbSensitiveInput" style="font-size: 0.75rem;">🔒</span>
+                            </label>
+                            <button type="button" class="small-btn" style="padding: 2px 8px; font-size: 0.85rem;"
+                                    @click="
+                                       const keyEl = document.getElementById('cbKey_'+unifiedClipboard.id);
+                                       const valEl = document.getElementById('cbVal_'+unifiedClipboard.id);
+                                       if (keyEl && keyEl.value.trim() && valEl && valEl.value.trim()) {
+                                           addItem(unifiedClipboard.id, { key: keyEl.value.trim(), value: valEl.value.trim(), sensitive: Boolean(cbSensitiveInput) });
+                                           keyEl.value = ''; valEl.value = '';
+                                           cbSensitiveInput = false;
+                                       }
+                                    "
+                                    title="Add clipboard entry" aria-label="Add clipboard entry">+</button>
                         </div>
                     </div>
                 </template>
@@ -138,6 +165,7 @@
         <div class="modal-content" @click.stop>
             <h3 style="margin-bottom: 16px;">New List</h3>
             <input type="text" x-model="newListTitle" placeholder="List title..." @keydown.enter="submitNewList()" class="search-bar" id="newListInput" aria-label="New list title">
+
             <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px;">
                 <button type="button" class="nav-btn" @click="newListModal = false" aria-label="Cancel list creation" title="Cancel">Cancel</button>
                 <button type="button" class="nav-btn" @click="submitNewList()" aria-label="Confirm create list" title="Create list">Create</button>
@@ -145,7 +173,7 @@
         </div>
     </div>
 
-    <main class="lists-grid">
+    <main class="lists-grid" :data-layout="layoutMode">
         <template x-for="list in filteredLists" :key="list.id">
             <div class="list-card" :class="{ 'archived': list.archived }">
                 
@@ -164,10 +192,6 @@
                                 <span class="time-badge" style="font-size: 0.75rem; flex-shrink: 0;">⎘ Clipboard</span>
                             </template>
                         </div>
-                        <!-- Sprint dates display -->
-                        <template x-if="list.features?.sprint_dates && (list.sprint_start || list.sprint_end)">
-                            <span class="sprint-dates" x-text="(list.sprint_start || '?') + ' → ' + (list.sprint_end || '?')"></span>
-                        </template>
                     </div>
                     <div class="list-actions" x-show="list.type === 'standard'">
                         <button type="button" @click="list._menuOpen = !list._menuOpen" aria-label="List options menu" title="List options" class="menu-trigger-btn" :class="{'active': list._menuOpen}">
@@ -178,6 +202,13 @@
                             </svg>
                         </button>
                         <div x-show="list._menuOpen" @click.outside="list._menuOpen = false" x-cloak class="list-dropdown-menu">
+                            <button type="button" class="dropdown-item" @click="copyAllListItems(list); list._menuOpen = false" aria-label="Copy all list items" title="Copy all items in this list">
+                                <svg class="icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                                </svg>
+                                <span>Copy All Items</span>
+                            </button>
                             <button type="button" class="dropdown-item" @click="list._showSettings = !list._showSettings; list._menuOpen = false" aria-label="Configure list" title="Configure list">
                                 <svg class="icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1-.872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
                                 <span>Configure</span>
@@ -215,31 +246,6 @@
                             <div class="config-label-area" style="width: 100%;">
                                 <span class="config-title">Title</span>
                                 <input type="text" x-model="list.title" @change="updateList(list.id, { title: list.title })" class="config-text-input" placeholder="List title...">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Schedule Section: Sprint Dates -->
-                    <div class="config-section">
-                        <div class="config-section-title">Schedule</div>
-                        <div class="config-row">
-                            <div class="config-label-area">
-                                <span class="config-title">Sprint Dates</span>
-                                <span class="config-desc">Display start & end date range in list header</span>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" :checked="list.features?.sprint_dates" @change="toggleFeature(list.id, 'sprint_dates', $event.target.checked)" aria-label="Toggle sprint dates display" title="Toggle sprint dates">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="config-date-inputs" x-show="list.features?.sprint_dates">
-                            <div class="date-field">
-                                <label>Start</label>
-                                <input type="date" :value="list.sprint_start" @change="updateList(list.id, { sprint_start: $event.target.value })" aria-label="Sprint start date" title="Sprint start date">
-                            </div>
-                            <div class="date-field">
-                                <label>End</label>
-                                <input type="date" :value="list.sprint_end" @change="updateList(list.id, { sprint_end: $event.target.value })" aria-label="Sprint end date" title="Sprint end date">
                             </div>
                         </div>
                     </div>
@@ -293,16 +299,7 @@
                         </template>
                         <template x-if="list.type === 'clipboard'">
                             <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <div class="config-row">
-                                    <div class="config-label-area">
-                                        <span class="config-title">Sensitive Data</span>
-                                        <span class="config-desc">Mask secret values by default</span>
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" :checked="list.features?.sensitive" @change="toggleFeature(list.id, 'sensitive', $event.target.checked)" aria-label="Toggle sensitive data masking" title="Toggle sensitive data masking">
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
+
                                 <div class="config-row">
                                     <div class="config-label-area">
                                         <span class="config-title">Reorder</span>
@@ -404,10 +401,15 @@
                         <div class="items" :id="'list_items_' + list.id">
                             <template x-for="item in (searchQuery ? (list.items || []).filter(i => i.key && i.key.toLowerCase().includes(searchQuery.toLowerCase().trim())) : (list.items || []))" :key="item.id">
                                 <div class="item-row cb-row">
-                                    <span class="cb-key" :title="item.key" x-text="item.key"></span>
+                                    <span class="cb-key" :title="item.key">
+                                        <template x-if="item.sensitive">
+                                            <span style="font-size: 0.75rem; margin-right: 4px; opacity: 0.8;" title="Sensitive entry">🔒</span>
+                                        </template>
+                                        <span x-text="item.key"></span>
+                                    </span>
                                     <span class="cb-val" 
-                                          :title="list.features?.sensitive ? '••••••••' : item.value"
-                                          x-text="list.features?.sensitive ? '••••••••' : item.value"></span>
+                                          :title="item.sensitive ? maskSensitive(item.value) : item.value"
+                                          x-text="item.sensitive ? maskSensitive(item.value) : item.value"></span>
                                     <div class="item-actions">
                                         <button type="button" @click="copyToClipboard(item.value)" 
                                                 aria-label="Copy value to clipboard" 

@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"strings"
+	"unicode/utf8"
 )
 
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -26,9 +27,14 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 			for _, itm := range l.Items {
 				// Match keys only and not value text
-				if strings.Contains(strings.ToLower(itm.Key), q) {
-					if l.Features.Sensitive {
-						itm.Value = "••••••••"
+				if itm.Key != "" && strings.Contains(strings.ToLower(itm.Key), q) {
+					if itm.Sensitive {
+						count := utf8.RuneCountInString(itm.Value)
+						if count > 0 {
+							itm.Value = strings.Repeat("•", count)
+						} else {
+							itm.Value = ""
+						}
 					}
 					matchedList.Items = append(matchedList.Items, itm)
 				}

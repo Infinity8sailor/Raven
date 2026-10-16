@@ -12,6 +12,9 @@ type Server struct {
 	config    *Config
 	startTime time.Time
 	mux       *http.ServeMux
+	version   string
+	commit    string
+	buildDate string
 }
 
 func NewServer(config *Config, storage *Storage) *Server {
@@ -20,6 +23,21 @@ func NewServer(config *Config, storage *Storage) *Server {
 		config:    config,
 		startTime: time.Now(),
 		mux:       http.NewServeMux(),
+		version:   "v1.0.1",
+		commit:    "dev",
+		buildDate: "unknown",
+	}
+}
+
+func (s *Server) SetVersionInfo(version, commit, buildDate string) {
+	if version != "" {
+		s.version = version
+	}
+	if commit != "" {
+		s.commit = commit
+	}
+	if buildDate != "" {
+		s.buildDate = buildDate
 	}
 }
 

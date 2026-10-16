@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -8,7 +10,22 @@ import (
 	"raven/server"
 )
 
+var (
+	Version   = "v1.0.1"
+	GitCommit = "dev"
+	BuildDate = "unknown"
+)
+
 func main() {
+	showVersion := flag.Bool("version", false, "Print version information and exit")
+	portFlag := flag.Int("port", 0, "Custom HTTP port (overrides config.json and RAVEN_PORT env)")
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("Raven %s (commit: %s, built: %s)\n", Version, GitCommit, BuildDate)
+		return
+	}
+
 	// If current working directory lacks web assets, switch to executable directory
 	if exePath, err := os.Executable(); err == nil {
 		exeDir := filepath.Dir(exePath)
@@ -24,6 +41,9 @@ func main() {
 	config, err := server.LoadConfig("config.json")
 	if err != nil {
 		log.Printf("[Raven] Could not load config.json: %v", err)
+	}
+	if *portFlag > 0 {
+		config.Port = *portFlag
 	}
 
 	storage := server.NewStorage(config.DataDir)
@@ -43,9 +63,10 @@ func main() {
 	}
 
 	srv := server.NewServer(config, storage)
+	srv.SetVersionInfo(Version, GitCommit, BuildDate)
 	srv.SetupRoutes()
 
-	log.Printf("[Raven] Starting Raven server on port %d...", config.Port)
+	log.Printf("[Raven] Starting Raven %s (%s, built %s) on port %d...", Version, GitCommit, BuildDate, config.Port)
 	if err := srv.Start(); err != nil {
 		log.Fatalf("[Raven] Server error: %v", err)
 	}

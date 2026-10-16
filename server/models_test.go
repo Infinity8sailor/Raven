@@ -40,6 +40,9 @@ func TestValidateClipboardKey(t *testing.T) {
 	if err := ValidateClipboardKey(""); err == nil {
 		t.Error("expected error for empty key")
 	}
+	if err := ValidateClipboardKey("   "); err == nil {
+		t.Error("expected error for whitespace-only key")
+	}
 	if err := ValidateClipboardKey("a"); err != nil {
 		t.Errorf("unexpected error for 1 char: %v", err)
 	}
@@ -52,8 +55,14 @@ func TestValidateClipboardKey(t *testing.T) {
 }
 
 func TestValidateClipboardValue(t *testing.T) {
-	if err := ValidateClipboardValue(""); err != nil {
-		t.Errorf("unexpected error for empty value: %v", err)
+	if err := ValidateClipboardValue(""); err == nil {
+		t.Error("expected error for empty value")
+	}
+	if err := ValidateClipboardValue("   "); err == nil {
+		t.Error("expected error for whitespace-only value")
+	}
+	if err := ValidateClipboardValue("val"); err != nil {
+		t.Errorf("unexpected error for value: %v", err)
 	}
 	if err := ValidateClipboardValue(strings.Repeat("a", 500)); err != nil {
 		t.Errorf("unexpected error for 500 chars: %v", err)
@@ -112,6 +121,12 @@ func TestValidateCreateItemRequest(t *testing.T) {
 	}
 	if err := ValidateCreateItemRequest(CreateItemRequest{Key: "", Value: "value"}, "clipboard"); err == nil {
 		t.Error("expected error for empty key")
+	}
+	if err := ValidateCreateItemRequest(CreateItemRequest{Key: "key", Value: ""}, "clipboard"); err == nil {
+		t.Error("expected error for empty value")
+	}
+	if err := ValidateCreateItemRequest(CreateItemRequest{Key: "", Value: ""}, "clipboard"); err == nil {
+		t.Error("expected error for empty key and empty value")
 	}
 	if err := ValidateCreateItemRequest(CreateItemRequest{Key: strings.Repeat("a", 49), Value: "value"}, "clipboard"); err == nil {
 		t.Error("expected error for long key")

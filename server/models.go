@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -20,7 +21,7 @@ const (
 	MaxListTitleLen     = 48  // 1 line, truncate with ellipsis
 	MaxItemTitleLen     = 200 // 2 lines max, truncate with ellipsis
 	MaxClipboardKeyLen  = 48  // 1 line, truncate with ellipsis
-	MaxClipboardValueLen = 500 // 1 line in UI (truncated), generous for URLs/tokens
+	MaxClipboardValueLen = 500 // 1 line in UI (truncated), generous for URLs/values
 )
 
 // --- List Types ---
@@ -60,6 +61,7 @@ type List struct {
 	ID          string   `json:"id"`
 	Type        string   `json:"type"`
 	Title       string   `json:"title"`
+	Profile     string   `json:"profile,omitempty"`
 	CreatedAt   string   `json:"created_at"`
 	Order       int      `json:"order"`
 	Pinned      bool     `json:"pinned"`
@@ -82,6 +84,7 @@ type Item struct {
 	DueDate     string `json:"due_date,omitempty"`
 	Order       int    `json:"order"`
 	Collapsed   bool   `json:"collapsed"`
+	Sensitive   bool   `json:"sensitive,omitempty"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
 	CompletedAt string `json:"completed_at,omitempty"`
@@ -100,10 +103,12 @@ type Features struct {
 
 // Settings holds user-configurable app settings.
 type Settings struct {
-	Theme          string `json:"theme"`
-	ShowArchived   bool   `json:"show_archived"`
-	BackupMode     string `json:"backup_mode"`
-	BackupMaxCount int    `json:"backup_max_count"`
+	Theme          string   `json:"theme"`
+	ShowArchived   bool     `json:"show_archived"`
+	BackupMode     string   `json:"backup_mode"`
+	BackupMaxCount int      `json:"backup_max_count"`
+	ActiveProfile  string   `json:"active_profile,omitempty"`
+	Profiles       []string `json:"profiles,omitempty"`
 }
 
 // Meta holds internal bookkeeping data.
@@ -116,15 +121,17 @@ type Meta struct {
 
 // CreateListRequest is the payload for POST /api/lists.
 type CreateListRequest struct {
-	Type  string `json:"type"`
-	Title string `json:"title"`
+	Type    string `json:"type"`
+	Title   string `json:"title"`
+	Profile string `json:"profile,omitempty"`
 }
 
 // UpdateListRequest is the payload for PUT /api/lists/:id.
 type UpdateListRequest struct {
-	Title    *string `json:"title,omitempty"`
-	Pinned   *bool   `json:"pinned,omitempty"`
-	Archived *bool   `json:"archived,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	Profile     *string `json:"profile,omitempty"`
+	Pinned      *bool   `json:"pinned,omitempty"`
+	Archived    *bool   `json:"archived,omitempty"`
 	SprintStart *string `json:"sprint_start,omitempty"`
 	SprintEnd   *string `json:"sprint_end,omitempty"`
 }
@@ -142,17 +149,19 @@ type UpdateFeaturesRequest struct {
 
 // CreateItemRequest is the payload for POST /api/lists/:id/items.
 type CreateItemRequest struct {
-	Title string `json:"title,omitempty"`
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
+	Title     string `json:"title,omitempty"`
+	Key       string `json:"key,omitempty"`
+	Value     string `json:"value,omitempty"`
+	Sensitive *bool  `json:"sensitive,omitempty"`
 }
 
 // UpdateItemRequest is the payload for PUT /api/lists/:id/items/:itemId.
 type UpdateItemRequest struct {
-	Title   *string `json:"title,omitempty"`
-	Key     *string `json:"key,omitempty"`
-	Value   *string `json:"value,omitempty"`
-	DueDate *string `json:"due_date,omitempty"`
+	Title     *string `json:"title,omitempty"`
+	Key       *string `json:"key,omitempty"`
+	Value     *string `json:"value,omitempty"`
+	DueDate   *string `json:"due_date,omitempty"`
+	Sensitive *bool   `json:"sensitive,omitempty"`
 }
 
 // ReorderRequest is the payload for reorder endpoints.
@@ -163,10 +172,12 @@ type ReorderRequest struct {
 
 // UpdateSettingsRequest is the payload for PUT /api/settings.
 type UpdateSettingsRequest struct {
-	Theme          *string `json:"theme,omitempty"`
-	ShowArchived   *bool   `json:"show_archived,omitempty"`
-	BackupMode     *string `json:"backup_mode,omitempty"`
-	BackupMaxCount *int    `json:"backup_max_count,omitempty"`
+	Theme          *string   `json:"theme,omitempty"`
+	ShowArchived   *bool     `json:"show_archived,omitempty"`
+	BackupMode     *string   `json:"backup_mode,omitempty"`
+	BackupMaxCount *int      `json:"backup_max_count,omitempty"`
+	ActiveProfile  *string   `json:"active_profile,omitempty"`
+	Profiles       *[]string `json:"profiles,omitempty"`
 }
 
 // APIError is the standard error response.
@@ -178,6 +189,9 @@ type APIError struct {
 // HealthResponse is returned by GET /api/health.
 type HealthResponse struct {
 	Status        string `json:"status"`
+	Version       string `json:"version,omitempty"`
+	GitCommit     string `json:"git_commit,omitempty"`
+	BuildDate     string `json:"build_date,omitempty"`
 	SchemaVersion string `json:"schema_version"`
 	ListCount     int    `json:"list_count"`
 	ItemCount     int    `json:"item_count"`
@@ -222,10 +236,11 @@ func ValidateItemTitle(title string) error {
 
 // ValidateClipboardKey checks the clipboard key against length constraints.
 func ValidateClipboardKey(key string) error {
-	if len(key) == 0 {
+	trimmed := strings.TrimSpace(key)
+	if len(trimmed) == 0 {
 		return errors.New("clipboard key cannot be empty")
 	}
-	if len(key) > MaxClipboardKeyLen {
+	if len(trimmed) > MaxClipboardKeyLen {
 		return errors.New("clipboard key exceeds maximum length of 48 characters")
 	}
 	return nil
@@ -233,7 +248,11 @@ func ValidateClipboardKey(key string) error {
 
 // ValidateClipboardValue checks the clipboard value against length constraints.
 func ValidateClipboardValue(value string) error {
-	if len(value) > MaxClipboardValueLen {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) == 0 {
+		return errors.New("clipboard value cannot be empty")
+	}
+	if len(trimmed) > MaxClipboardValueLen {
 		return errors.New("clipboard value exceeds maximum length of 500 characters")
 	}
 	return nil
@@ -397,7 +416,7 @@ func GetDefaultSeedLists() []List {
 		{
 			ID:        "lst_clipboard_demo",
 			Type:      ListTypeClipboard,
-			Title:     "Quick Clipboard",
+			Title:     "Clipboard",
 			CreatedAt: now,
 			Order:     2,
 			Pinned:    false,
@@ -417,8 +436,9 @@ func GetDefaultSeedLists() []List {
 				},
 				{
 					ID:        "itm_seed_11",
-					Key:       "Example API Token",
-					Value:     "rvn_sec_live_9471_token",
+					Key:       "Example Sensitive Entry",
+					Value:     "demo_hidden_entry_9471",
+					Sensitive: true,
 					Order:     1,
 					CreatedAt: now,
 					UpdatedAt: now,
@@ -445,7 +465,9 @@ func NewDefaultStore() *TaskStore {
 			Theme:          "obsidian",
 			ShowArchived:   false,
 			BackupMode:     "on_write",
-			BackupMaxCount: 50,
+			BackupMaxCount: 15,
+			ActiveProfile:  "all",
+			Profiles:       []string{"all", "work", "personal", "ai"},
 		},
 		Meta: Meta{
 			LastBackup:    "",

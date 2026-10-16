@@ -142,8 +142,8 @@
         },
         {
           "id": "itm_seed_11",
-          "key": "Example API Token",
-          "value": "rvn_sec_live_9471_token",
+          "key": "Example Sensitive Entry",
+          "value": "demo_hidden_entry_9471",
           "order": 1,
           "created_at": "2026-10-10T12:00:00Z",
           "updated_at": "2026-10-10T12:00:00Z"

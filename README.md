@@ -2,7 +2,7 @@
 
 > **Hell-minimal, distraction-free, local-first todo and clipboard application.**
 
-Raven is an ultra-lightweight, single-binary personal organizer built in pure Go and Alpine.js. It pairs structured todo lists with an encrypted, quick-access key-value clipboard. No telemetry, no cloud dependencies, no npm bloat.
+Raven is an ultra-lightweight, single-binary personal organizer built in pure Go and Alpine.js. It pairs structured todo lists with a masked, quick-access key-value clipboard. No telemetry, no cloud dependencies, no npm bloat.
 
 ---
 
@@ -15,7 +15,7 @@ Raven is an ultra-lightweight, single-binary personal organizer built in pure Go
 - **Seamless Inline Editing**: Double-click any task title to trigger an auto-expanding inline textarea with zero scrollbars, instant `Enter` key persistence, and unpersisted draft highlights.
 - **Privacy-Centric Search**:
   - Instant text filter across standard lists and tasks.
-  - Searches clipboard entries strictly against **keys** (value text is never searched to prevent accidental secret leakage).
+  - Searches clipboard entries strictly against **keys** (value text is never searched to prevent accidental data exposure).
   - Sensitive clipboard values remain masked in search results with no unhide option.
 - **Fluid Masonry Layout**: Column-based grid that dynamically stacks cards tightly with zero vertical dead space across 1 to 5 columns on desktop and 4K displays.
 - **Customization Engine**:

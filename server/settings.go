@@ -45,6 +45,12 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		if req.BackupMaxCount != nil {
 			store.Settings.BackupMaxCount = *req.BackupMaxCount
 		}
+		if req.ActiveProfile != nil {
+			store.Settings.ActiveProfile = *req.ActiveProfile
+		}
+		if req.Profiles != nil {
+			store.Settings.Profiles = *req.Profiles
+		}
 		updated = store.Settings
 	})
 	if err != nil {
@@ -75,6 +81,9 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	resp := HealthResponse{
 		Status:        "ok",
+		Version:       s.version,
+		GitCommit:     s.commit,
+		BuildDate:     s.buildDate,
 		SchemaVersion: store.SchemaVersion,
 		ListCount:     listCount,
 		ItemCount:     itemCount,

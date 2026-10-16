@@ -32,41 +32,56 @@ body {
 .sticky-header {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 100;
     background-color: var(--bg);
     border-bottom: 1px solid var(--border);
-    height: 56px;
+    min-height: 52px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
+    align-items: flex-end;
+    padding: 8px 16px;
     gap: 16px;
 }
 
 .header-left {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 220px;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 2px;
+    flex-shrink: 0;
 }
 
 .header-center {
     flex: 1;
-    max-width: 600px;
+    max-width: 480px;
+    margin-bottom: 2px;
 }
 
 .header-right {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-width: 320px;
+    gap: 8px;
     justify-content: flex-end;
+    margin-bottom: 2px;
+    flex-shrink: 0;
 }
 
 .logo {
     font-weight: bold;
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.app-version {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    line-height: 1;
+    opacity: 0.75;
+    margin-right: 18px;
+    user-select: none;
 }
 
 .theme-picker {
@@ -78,10 +93,14 @@ body {
     font-size: 0.85rem;
 }
 
-.clock {
+.clock-sub {
     font-family: var(--font-mono);
     color: var(--accent);
-    font-size: 0.9rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    opacity: 0.92;
+    white-space: pre;
 }
 
 /* Search & Nav */
@@ -169,6 +188,30 @@ body {
     font-size: 0.95rem;
 }
 
+.small-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.small-btn:hover {
+    background: var(--bg-card);
+    color: var(--text);
+    border-color: var(--accent);
+}
+.small-btn.active {
+    background: var(--bg-card);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
 /* Modal */
 .modal-overlay {
     position: fixed;
@@ -207,7 +250,7 @@ body {
 .lists-grid {
     column-count: 1;
     column-gap: 20px;
-    padding: 24px 20px 32px 20px;
+    padding: 16px 20px 32px 20px;
     max-width: 1800px;
     margin: 0 auto;
     width: 100%;
@@ -217,6 +260,12 @@ body {
 @media (min-width: 1400px) { .lists-grid { column-count: 3; } }
 @media (min-width: 1900px) { .lists-grid { column-count: 4; } }
 @media (min-width: 2400px) { .lists-grid { column-count: 5; } }
+
+/* Explicit Layout Overrides */
+.lists-grid[data-layout="1-col"] { column-count: 1 !important; max-width: 800px; }
+.lists-grid[data-layout="2-col"] { column-count: 2 !important; max-width: 1400px; }
+.lists-grid[data-layout="3-col"] { column-count: 3 !important; max-width: 1800px; }
+.lists-grid[data-layout="4-col"] { column-count: 4 !important; max-width: 2200px; }
 
 .list-card {
     background-color: var(--bg-card);
@@ -229,9 +278,12 @@ body {
     display: inline-flex;
     flex-direction: column;
     max-height: 65vh;
-    transform: translateZ(0);
-    contain: content;
-    overflow: hidden;
+    position: relative;
+    overflow: visible;
+}
+
+.list-card:has(.list-dropdown-menu:not([style*="display: none"])) {
+    z-index: 50;
 }
 
 .list-card.archived {
@@ -264,12 +316,7 @@ body {
     flex: 1;
 }
 
-.sprint-dates {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    margin-top: 2px;
-}
+
 
 .icon {
     width: 14px;
@@ -312,13 +359,13 @@ body {
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
-    min-width: 140px;
+    min-width: 160px;
     background-color: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 4px;
-    z-index: 50;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    z-index: 60;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -463,38 +510,7 @@ body {
     border-color: var(--accent);
 }
 
-.config-date-inputs {
-    display: flex;
-    gap: 10px;
-    margin-top: 4px;
-}
 
-.date-field {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.date-field label {
-    font-size: 0.72rem;
-    color: var(--text-muted);
-}
-
-.date-field input[type="date"] {
-    background-color: var(--bg-input);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 0.78rem;
-    outline: none;
-    color-scheme: dark;
-}
-
-.date-field input[type="date"]:focus {
-    border-color: var(--accent);
-}
 
 /* Custom Minimal Toggle Switch */
 .toggle-switch {
@@ -714,6 +730,29 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text-muted);
+}
+.cb-sensitive-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    user-select: none;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s;
+}
+.cb-sensitive-tag:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+.cb-sensitive-tag input[type="checkbox"] {
+    cursor: pointer;
+    margin: 0;
 }
 .collapse-toggle {
     cursor: pointer;
