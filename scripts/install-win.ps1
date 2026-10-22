@@ -35,7 +35,7 @@ if ($Port -gt 0) {
         }
         Write-Host "Configured custom port in config.json: $Port" -ForegroundColor Green
     } catch {
-        Write-Warning "Could not update config.json with port $Port: $_"
+        Write-Warning "Could not update config.json with port ${Port}: $_"
     }
 }
 

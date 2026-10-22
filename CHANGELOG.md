@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Delimited `${Port}` variable in PowerShell warning string in `scripts/install-win.ps1` to prevent drive-scope parser error.
+
 ## [1.0.1] - 2026-10-17
 
 ### Added
